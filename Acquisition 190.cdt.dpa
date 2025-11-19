@@ -1,0 +1,255 @@
+﻿DATA_PARAMETERS START
+   DataGuid             = {0B86B22B-1A49-411A-9657-4A4BDA3D3ED8}
+   CurrentSessionLabel  = 
+   DataByteOrder        = INTEL
+   DataSampOrder        = SAMP
+   AmplifierInfo        = Synamps Headbox 1: Digital(PN:8509 SN:0005) Analog(PN:8548 SN:0003) FW:01 (SynAmps), LP-Filter: order 2 Butterworth (Configuration: Quik-Cap Net 64111)
+   Comments             = 
+   FileHistory          = 
+   FileVersion          =  800
+   NumSessions          =  0
+   CurrentSession       =  0
+   DataFormat           =  6
+   FrequencyDomain      =  0
+   NumSamples           =  249900
+   NumTrials            =  1
+   NumChannels          =  67
+   NumGroups            =  2
+   NumMagGroups         =  0
+   NumElGroups          =  1
+   NumLinesSkip         =  0
+   NumColumnsSkip       =  0
+   DecimalSymbol        =  0
+   StartYear            =  2025
+   StartMonth           =  11
+   StartDay             =  12
+   StartHour            =  11
+   StartMin             =  21
+   StartSec             =  39
+   StartMillisec        =  605
+   StartOffsetUTCMin    =  0
+   SampleTimeUsec       =  1000
+   SampleFreqHz         =  1000
+   TriggerOffsetUsec    =  0
+   TriggerOffsetHz      =  0
+DATA_PARAMETERS END
+
+DEVICE_PARAMETERS START
+   DataUnit             = uV
+   NumChanThisGroup     =  64
+   NumSensorsThisGroup  =  64
+   CommonOffset         =  0
+   NumRefChannels       =  0
+   CommonScale          =  1
+DEVICE_PARAMETERS END
+
+DEVICE_PARAMETERS_OTHERS START
+   DataUnit             = uV
+   NumChanThisGroup     =  3
+   NumSensorsThisGroup  =  3
+   CommonOffset         =  0
+   NumRefChannels       =  0
+   CommonScale          =  1
+DEVICE_PARAMETERS_OTHERS END
+
+LABELS START
+   ListDescription      = SensorLabels
+   ListUnits            = 
+   ListNrColumns        =  260
+   ListNrRows           =  64
+   ListNrTimepts        =  1
+   ListNrBlocks         =  1
+   ListBinary           =  0
+   ListType             =  5
+   ListTrafoType        =  0
+   ListGridType         =  2
+   ListFirstColumn      =  1
+   ListIndexMin         = -1
+   ListIndexMax         = -1
+   ListIndexAbsMax      = -1
+LABELS END
+
+LABELS START_LIST	# Do not edit!
+Fp1
+Fpz
+Fp2
+AF3
+AF4
+F11
+F7
+F5
+F3
+F1
+Fz
+F2
+F4
+F6
+F8
+F12
+FT11
+FC5
+FC3
+FC1
+FCz
+FC2
+FC4
+FC6
+FT12
+T7
+C5
+C3
+C1
+Cz
+C2
+C4
+C6
+T8
+TP7
+CP5
+CP3
+CP1
+CPz
+CP2
+CP4
+CP6
+TP8
+M1
+M2
+P7
+P5
+P3
+P1
+Pz
+P2
+P4
+P6
+P8
+PO7
+PO3
+POz
+PO4
+PO8
+O1
+Oz
+O2
+Cb1
+Cb2
+LABELS END_LIST
+
+GEOMETRY START
+   HelmetSystem         =  0
+   PlanarSensors        =  0
+   SensorShape          = -1
+   SensorOrder          =  0
+   SensorStatus         =  6
+   SensorDiameterXMm    =  10
+   SensorDiameterYMm    =  10
+GEOMETRY END
+
+SENSORS START
+   ListDescription      = Sensors
+   ListUnits            = mm
+   ListNrColumns        =  3
+   ListNrRows           =  64
+   ListNrTimepts        =  1
+   ListNrBlocks         =  1
+   ListBinary           =  0
+   ListType             =  1
+   ListTrafoType        =  0
+   ListGridType         =  2
+   ListFirstColumn      =  1
+   ListIndexMin         = -1
+   ListIndexMax         = -1
+   ListIndexAbsMax      = -1
+SENSORS END
+
+SENSORS START_LIST	# Do not edit!
+  29	-104.536	 33.1255
+ -1	-109.203	 38.6223
+ -30	-104.651	 34.1187
+  34	-101.932	 62.625
+ -36	-101.054	 63.734
+  74	-46.771	-30.6181
+  70	-61.8921	 30.0395
+  66	-68.4593	 60.4841
+  52	-76.7816	 88.7107
+  28	-84.0625	 107.998
+ -2	-88.7299	 113.494
+ -31	-84.8243	 105.895
+ -53	-78.6525	 87.4859
+ -66	-69.684	 62.3549
+ -70	-61.2459	 33.1351
+ -74	-44.4855	-24.3113
+  80	-18.5638	-39.413
+  77	-39.5866	 71.902
+  62	-47.61	 106.204
+  34	-54.3605	 129.58
+ -3	-57.2728	 137.295
+ -37	-54.129	 127.593
+ -63	-48.3719	 104.102
+ -77	-40.6956	 72.7796
+ -79	-16.394	-32.1129
+  84	-3.51988	 38.8537
+  83	-8.38021	 80.5715
+  69	-14.7642	 118.085
+  37	-18.882	 144.788
+ -3	-22.0258	 154.489
+ -40	-19.6438	 142.685
+ -69	-15.7575	 117.969
+ -83	-9.48921	 81.4491
+ -84	-3.98277	 42.8268
+  82	 26.0471	 44.3119
+  81	 25.3914	 84.5061
+  67	 22.9805	 122.482
+  36	 20.8493	 149.417
+ -3	 17.8212	 158.125
+ -40	 18.1009	 147.083
+ -67	 19.0074	 122.019
+ -80	 21.1868	 86.0298
+ -82	 24.591	 48.1693
+  76	 41.2549	 8.83346
+ -77	 38.4583	 15.555
+  73	 54.5051	 50.6477
+  68	 55.6527	 84.0046
+  56	 55.1609	 114.15
+  30	 54.7173	 135.241
+ -2	 52.9139	 142.078
+ -32	 52.7307	 135.009
+ -56	 53.1743	 113.919
+ -68	 52.5571	 84.6507
+ -72	 52.1714	 53.3961
+  54	 77.6496	 59.3847
+  37	 79.559	 94.8439
+ -2	 78.7007	 110.852
+ -37	 78.6814	 93.7349
+ -55	 75.5473	 60.1466
+  29	 91.8544	 67.0803
+ -1	 94.0242	 74.3804
+ -30	 90.7454	 67.9578
+  28	 92.8091	 32.9615
+ -31	 90.7069	 33.7234
+SENSORS END_LIST
+
+LABELS_OTHERS START
+   ListDescription      = SensorLabels
+   ListUnits            = 
+   ListNrColumns        =  260
+   ListNrRows           =  3
+   ListNrTimepts        =  1
+   ListNrBlocks         =  1
+   ListBinary           =  0
+   ListType             =  5
+   ListTrafoType        =  0
+   ListGridType         =  2
+   ListFirstColumn      =  1
+   ListIndexMin         = -1
+   ListIndexMax         = -1
+   ListIndexAbsMax      = -1
+LABELS_OTHERS END
+
+LABELS_OTHERS START_LIST	# Do not edit!
+VEOG
+HEOG
+Trigger
+LABELS_OTHERS END_LIST
+
