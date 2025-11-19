@@ -69,6 +69,7 @@ class EEGPreprocessor:
         self.raw = None
         self.epochs = None
         self.ica = None
+        self.evoked_dict = {}
 
     def load_data(self):
         """加载Curry格式的脑电数据"""
@@ -94,7 +95,6 @@ class EEGPreprocessor:
         except Exception as e:
             print(f"✗ 加载数据失败: {e}")
             print("\n尝试其他读取方法...")
-            # 如果Curry格式读取失败，尝试其他方法
             raise
 
         return self.raw
@@ -209,32 +209,6 @@ class EEGPreprocessor:
                 print("✓ 未检测到明显的坏导联")
 
         return self.raw.info['bads']
-
-    def remove_problematic_channels(self):
-        """移除可能导致可视化问题的电极"""
-        print("\n" + "=" * 60)
-        print("处理问题电极")
-        print("=" * 60)
-
-        # 已知会导致位置重叠的电极
-        problematic_channels = ['F11', 'F12', 'FT11', 'FT12', 'Cb1', 'Cb2']
-        channels_to_remove = [ch for ch in problematic_channels if ch in self.raw.ch_names]
-
-        if channels_to_remove:
-            print(f"检测到问题电极: {channels_to_remove}")
-            response = input("是否移除这些电极以避免可视化错误? (y/n): ")
-
-            if response.lower() == 'y':
-                self.raw.drop_channels(channels_to_remove)
-                print(f"✓ 已移除电极: {channels_to_remove}")
-                print(f"  剩余电极数: {len(self.raw.ch_names)}")
-                return True
-            else:
-                print("⚠ 保留问题电极，但可视化可能会失败")
-                return False
-        else:
-            print("✓ 未检测到问题电极")
-            return False
 
     def set_reference(self, ref_channels='average'):
         """
@@ -352,7 +326,7 @@ class EEGPreprocessor:
                 # 明确指定EOG通道进行检测
                 eog_indices, eog_scores = self.ica.find_bads_eog(
                     self.raw,
-                    ch_name=eog_ch_names,  # 明确指定EOG通道
+                    ch_name=eog_ch_names,
                     threshold=3.0,
                     verbose=False
                 )
@@ -463,7 +437,7 @@ class EEGPreprocessor:
             print("  1. Trigger通道没有记录事件")
             print("  2. 事件编码方式不同")
             print("  3. 需要从其他来源导入事件")
-            events = np.array([])  # 返回空数组而不是None
+            events = np.array([])
 
         return events
 
@@ -477,7 +451,7 @@ class EEGPreprocessor:
         events : array
             事件数组
         event_id : dict
-            事件ID字典，例如 {'Go': 1, 'NoGo': 2}
+            事件ID字典，例如 {'Go': 11, 'NoGo': 21}
         tmin : float
             epoch开始时间（相对于事件，秒）
         tmax : float
@@ -491,17 +465,11 @@ class EEGPreprocessor:
         print("步骤 8: 创建Epochs")
         print("=" * 60)
 
-        if event_id is None:
-            # 自动创建事件ID
-            unique_events = np.unique(events[:, 2])
-            event_id = {f'Event_{i}': i for i in unique_events}
-            print(f"使用自动生成的事件ID: {event_id}")
-            print("⚠ 建议根据实验设计修改事件ID")
-
         if reject is None:
             reject = {'eeg': 100e-6}  # 100 µV
 
         print(f"\nEpoch参数:")
+        print(f"  事件标记: {event_id}")
         print(f"  时间窗口: {tmin} 到 {tmax} 秒")
         print(f"  基线: {baseline}")
         print(f"  拒绝标准: {reject}")
@@ -512,66 +480,154 @@ class EEGPreprocessor:
 
         print(f"\n✓ 创建了 {len(self.epochs)} 个epochs")
         print(f"  各条件的epoch数量:")
-        for event_name, count in zip(self.epochs.event_id.keys(),
-                                     [len(self.epochs[ev]) for ev in self.epochs.event_id.keys()]):
+        for event_name in self.epochs.event_id.keys():
+            count = len(self.epochs[event_name])
             print(f"    {event_name}: {count}")
 
         # 绘制epochs图像
-        self.epochs.plot(n_epochs=5, n_channels=30, scalings='auto')
+        try:
+            self.epochs.plot(n_epochs=5, n_channels=30, scalings='auto')
+        except Exception as e:
+            print(f"⚠ 绘制epochs失败: {e}")
 
         return self.epochs
 
-    def plot_erp(self):
-        """绘制事件相关电位（ERP）"""
+    def compute_erp(self):
+        """计算事件相关电位（ERP）"""
         print("\n" + "=" * 60)
-        print("步骤 9: 绘制ERP")
+        print("步骤 9: 计算ERP叠加平均")
         print("=" * 60)
 
         if self.epochs is None:
             print("✗ 请先创建epochs")
+            return None
+
+        # 对每个条件计算叠加平均
+        self.evoked_dict = {}
+        for condition in self.epochs.event_id.keys():
+            evoked = self.epochs[condition].average()
+            self.evoked_dict[condition] = evoked
+            print(f"✓ {condition}: 叠加平均了 {len(self.epochs[condition])} 个trials")
+
+        return self.evoked_dict
+
+    def plot_erp(self, picks=None, show_difference_wave=True):
+        """
+        绘制事件相关电位（ERP）
+
+        Parameters:
+        -----------
+        picks : str or list
+            要绘制的电极，如 'eeg' 或 ['Fz', 'Cz', 'Pz']
+        show_difference_wave : bool
+            是否显示差异波（NoGo - Go）
+        """
+        print("\n" + "=" * 60)
+        print("步骤 10: 绘制ERP波形")
+        print("=" * 60)
+
+        if not self.evoked_dict:
+            print("✗ 请先计算ERP")
             return
 
-        # 计算平均ERP
-        evoked_dict = {condition: self.epochs[condition].average()
-                      for condition in self.epochs.event_id.keys()}
+        # 1. 绘制所有条件的ERP对比（叠加图）
+        print("\n绘制条件对比图...")
+        colors = {'Go': 'blue', 'NoGo': 'red', 'Difference': 'green'}
 
-        # 绘制所有条件的ERP对比
-        colors = ['blue', 'red', 'green', 'orange']
         try:
-            mne.viz.plot_compare_evokeds(evoked_dict, picks='eeg', combine='mean',
-                                         colors=colors[:len(evoked_dict)])
-            print("✓ ERP波形图绘制完成")
+            fig = mne.viz.plot_compare_evokeds(
+                self.evoked_dict,
+                picks=picks if picks else 'eeg',
+                combine='mean',
+                colors=[colors.get(k, 'black') for k in self.evoked_dict.keys()],
+                title='Go vs NoGo ERP对比 (所有电极平均)'
+            )
+            print("✓ ERP对比波形图绘制完成")
         except Exception as e:
             print(f"⚠ 绘制ERP波形时出现问题: {e}")
 
-        # 绘制地形图
-        print("\n尝试绘制地形图...")
-        for condition, evoked in evoked_dict.items():
+        # 2. 绘制典型电极的波形
+        print("\n绘制典型电极波形...")
+        typical_channels = ['Fz', 'FCz', 'Cz', 'CPz', 'Pz']
+        available_channels = [ch for ch in typical_channels
+                            if ch in self.evoked_dict[list(self.evoked_dict.keys())[0]].ch_names]
+
+        if available_channels:
+            n_channels = len(available_channels)
+            fig, axes = plt.subplots(1, n_channels, figsize=(5*n_channels, 4))
+            if n_channels == 1:
+                axes = [axes]
+
+            for ax, ch in zip(axes, available_channels):
+                for condition, evoked in self.evoked_dict.items():
+                    evoked_ch = evoked.copy().pick_channels([ch])
+                    times = evoked_ch.times * 1000  # 转换为毫秒
+                    data = evoked_ch.data[0] * 1e6  # 转换为微伏
+                    ax.plot(times, data, label=condition,
+                           color=colors.get(condition, 'black'), linewidth=2)
+
+                ax.axhline(0, color='black', linestyle='--', linewidth=0.5)
+                ax.axvline(0, color='black', linestyle='--', linewidth=0.5)
+                ax.set_xlabel('时间 (ms)', fontsize=12)
+                ax.set_ylabel('电压 (μV)', fontsize=12)
+                ax.set_title(f'{ch}电极', fontsize=14, fontweight='bold')
+                ax.legend(loc='best')
+                ax.grid(True, alpha=0.3)
+
+            plt.tight_layout()
+            print(f"✓ 绘制了 {available_channels} 电极的波形")
+        else:
+            print(f"⚠ 未找到典型电极 {typical_channels}")
+
+        # 3. 如果有Go和NoGo条件，计算并绘制差异波
+        if show_difference_wave and 'Go' in self.evoked_dict and 'NoGo' in self.evoked_dict:
+            print("\n计算差异波 (NoGo - Go)...")
             try:
-                times = np.linspace(evoked.tmin, evoked.tmax, 6)[1:-1]
-                evoked.plot_topomap(times=times, title=f'{condition} - 地形图',
-                                   time_unit='s')
+                diff_wave = mne.combine_evoked([self.evoked_dict['NoGo'],
+                                               self.evoked_dict['Go']],
+                                              weights=[1, -1])
+
+                # 绘制差异波
+                fig, ax = plt.subplots(1, 1, figsize=(10, 6))
+                times = diff_wave.times * 1000
+                data = diff_wave.data.mean(axis=0) * 1e6  # 所有电极平均
+
+                ax.plot(times, data, color='green', linewidth=2, label='NoGo - Go')
+                ax.fill_between(times, 0, data, where=(data > 0),
+                               color='green', alpha=0.3, label='NoGo > Go')
+                ax.fill_between(times, 0, data, where=(data < 0),
+                               color='red', alpha=0.3, label='Go > NoGo')
+
+                ax.axhline(0, color='black', linestyle='--', linewidth=0.5)
+                ax.axvline(0, color='black', linestyle='--', linewidth=0.5)
+                ax.set_xlabel('时间 (ms)', fontsize=14)
+                ax.set_ylabel('电压差异 (μV)', fontsize=14)
+                ax.set_title('差异波: NoGo - Go (所有电极平均)', fontsize=16, fontweight='bold')
+                ax.legend(loc='best', fontsize=12)
+                ax.grid(True, alpha=0.3)
+                plt.tight_layout()
+
+                print("✓ 差异波绘制完成")
+
+                # 保存差异波到字典
+                self.evoked_dict['Difference'] = diff_wave
+
+            except Exception as e:
+                print(f"⚠ 计算差异波失败: {e}")
+
+        # 4. 绘制地形图
+        print("\n尝试绘制地形图...")
+        for condition, evoked in self.evoked_dict.items():
+            try:
+                times = np.linspace(0, 0.6, 7)  # 0-600ms，每100ms一个时间点
+                fig = evoked.plot_topomap(times=times,
+                                         title=f'{condition} - 地形图',
+                                         time_unit='s',
+                                         size=3)
                 print(f"✓ {condition} 地形图绘制完成")
             except ValueError as e:
                 if "overlapping positions" in str(e):
                     print(f"⚠ {condition} 地形图无法绘制（电极位置重叠）")
-                    print("  建议：可以绘制单个电极的ERP波形代替")
-                    # 绘制几个典型电极的ERP
-                    try:
-                        typical_channels = ['Fz', 'Cz', 'Pz']
-                        available_channels = [ch for ch in typical_channels if ch in evoked.ch_names]
-                        if available_channels:
-                            fig, axes = plt.subplots(len(available_channels), 1,
-                                                   figsize=(10, 3*len(available_channels)))
-                            if len(available_channels) == 1:
-                                axes = [axes]
-                            for ax, ch in zip(axes, available_channels):
-                                evoked.copy().pick_channels([ch]).plot(axes=ax, show=False)
-                                ax.set_title(f'{condition} - {ch}')
-                            plt.tight_layout()
-                            print(f"  ✓ 绘制了 {condition} 在 {available_channels} 电极的波形")
-                    except Exception as e2:
-                        print(f"  ⚠ 备选可视化也失败: {e2}")
                 else:
                     print(f"⚠ {condition} 地形图绘制失败: {e}")
             except Exception as e:
@@ -579,10 +635,55 @@ class EEGPreprocessor:
 
         print("\n✓ ERP分析完成")
 
+    def analyze_erp_components(self):
+        """分析ERP成分（如P300, N200等）"""
+        print("\n" + "=" * 60)
+        print("步骤 11: ERP成分分析")
+        print("=" * 60)
+
+        if not self.evoked_dict:
+            print("✗ 请先计算ERP")
+            return
+
+        # 选择中央电极进行成分分析
+        roi_channels = ['Fz', 'FCz', 'Cz', 'CPz', 'Pz']
+
+        for condition, evoked in self.evoked_dict.items():
+            if condition == 'Difference':
+                continue
+
+            print(f"\n{condition} 条件:")
+            available_roi = [ch for ch in roi_channels if ch in evoked.ch_names]
+
+            if not available_roi:
+                print("  ⚠ 未找到ROI电极")
+                continue
+
+            # 提取ROI平均数据
+            evoked_roi = evoked.copy().pick_channels(available_roi)
+            data = evoked_roi.data.mean(axis=0) * 1e6  # 转换为微伏
+            times = evoked_roi.times * 1000  # 转换为毫秒
+
+            # 寻找N200成分 (150-250ms, 负波)
+            n200_window = (times >= 150) & (times <= 250)
+            if np.any(n200_window):
+                n200_idx = np.argmin(data[n200_window])
+                n200_time = times[n200_window][n200_idx]
+                n200_amp = data[n200_window][n200_idx]
+                print(f"  N200: {n200_time:.1f} ms, {n200_amp:.2f} μV")
+
+            # 寻找P300成分 (250-500ms, 正波)
+            p300_window = (times >= 250) & (times <= 500)
+            if np.any(p300_window):
+                p300_idx = np.argmax(data[p300_window])
+                p300_time = times[p300_window][p300_idx]
+                p300_amp = data[p300_window][p300_idx]
+                print(f"  P300: {p300_time:.1f} ms, {p300_amp:.2f} μV")
+
     def save_preprocessed_data(self, output_dir='preprocessed_data'):
         """保存预处理后的数据"""
         print("\n" + "=" * 60)
-        print("步骤 10: 保存数据")
+        print("步骤 12: 保存数据")
         print("=" * 60)
 
         os.makedirs(output_dir, exist_ok=True)
@@ -604,6 +705,14 @@ class EEGPreprocessor:
             self.ica.save(ica_fname, overwrite=True)
             print(f"✓ 保存ICA: {ica_fname}")
 
+        # 保存ERP数据
+        if self.evoked_dict:
+            for condition, evoked in self.evoked_dict.items():
+                evoked_fname = os.path.join(output_dir,
+                                           f'{self.subject_name}_{condition}-ave.fif')
+                evoked.save(evoked_fname, overwrite=True)
+            print(f"✓ 保存ERP数据: {list(self.evoked_dict.keys())}")
+
         print(f"\n所有数据已保存到: {output_dir}")
 
 
@@ -618,9 +727,16 @@ def main():
     if not check_dependencies():
         sys.exit(1)
 
-    # 设置参数
-    DATA_PATH = '.'  # 数据文件所在目录
+    # ==================== 设置参数 ====================
+    DATA_PATH = 'raw_data'  # 数据文件所在目录
     SUBJECT_NAME = 'Acquisition 190'  # 文件名前缀
+
+    # Go/NoGo实验的事件标记
+    EVENT_ID = {
+        'Go': 11,      # Go试次的标记
+        'NoGo': 21     # NoGo试次的标记
+    }
+    # =================================================
 
     # 创建预处理器
     preprocessor = EEGPreprocessor(DATA_PATH, SUBJECT_NAME)
@@ -631,11 +747,6 @@ def main():
 
         # 2. 设置电极位置
         preprocessor.set_montage()
-
-        # 2.5 处理问题电极（可选）
-        # 如果你的数据有F11, F12, FT11, FT12, Cb1, Cb2等电极
-        # 这些电极可能导致可视化问题
-        # preprocessor.remove_problematic_channels()
 
         # 3. 滤波
         preprocessor.filter_data(l_freq=0.5, h_freq=40)
@@ -649,18 +760,16 @@ def main():
         # 6. 运行ICA
         ica = preprocessor.run_ica(n_components=15)
 
-        # 7. 应用ICA（如果需要手动选择成分，请取消下面的注释并指定）
-        # preprocessor.apply_ica(exclude_components=[0, 1])  # 示例：排除成分0和1
-
-        # 如果自动检测到了眼电成分，直接应用
+        # 7. 应用ICA
         if len(ica.exclude) > 0:
             preprocessor.apply_ica()
+            print(f"\n✓ 已自动去除ICA成分: {ica.exclude}")
         else:
-            print("\n⚠ 需要手动选择要排除的ICA成分")
-            print("  请查看ICA成分图，然后取消注释上面的apply_ica行并指定成分索引")
-            response = input("\n是否继续不应用ICA？(y/n): ")
+            print("\n⚠ 未检测到明显的伪迹成分")
+            response = input("是否继续不应用ICA？(y/n): ")
             if response.lower() != 'y':
-                print("程序终止。请检查ICA成分后重新运行。")
+                print("程序终止。请检查ICA成分后手动指定要排除的成分。")
+                print("可以修改代码中的: preprocessor.apply_ica(exclude_components=[0, 1])")
                 return
 
         # 8. 查找事件
@@ -668,35 +777,45 @@ def main():
 
         if len(events) > 0:
             # 9. 创建epochs
-            # 注意：请根据你的实验设计修改event_id
-            # 例如：event_id = {'Go': 1, 'NoGo': 2}
-            event_id = None  # 使用自动检测的事件ID
-
             epochs = preprocessor.create_epochs(
                 events,
-                event_id=event_id,
-                tmin=-0.2,  # epoch开始时间（秒）
-                tmax=0.8,   # epoch结束时间（秒）
-                baseline=(None, 0),  # 基线校正
+                event_id=EVENT_ID,  # 使用定义的Go/NoGo标记
+                tmin=-0.2,          # epoch开始时间（秒）
+                tmax=0.8,           # epoch结束时间（秒）
+                baseline=(None, 0), # 基线校正
                 reject={'eeg': 100e-6}  # 拒绝标准（100 µV）
             )
 
-            # 10. 绘制ERP
-            preprocessor.plot_erp()
+            # 10. 计算ERP叠加平均
+            evoked_dict = preprocessor.compute_erp()
+
+            # 11. 绘制ERP波形（包括差异波）
+            preprocessor.plot_erp(show_difference_wave=True)
+
+            # 12. 分析ERP成分
+            preprocessor.analyze_erp_components()
+
         else:
             print("\n⚠ 由于没有找到事件标记，跳过epoch创建和ERP分析")
 
-        # 11. 保存数据
+        # 13. 保存数据
         preprocessor.save_preprocessed_data()
 
         print("\n" + "=" * 60)
-        print("预处理完成！")
+        print("✓✓✓ 预处理完成！✓✓✓")
         print("=" * 60)
+        print("\n生成的分析结果包括:")
+        print("1. ✓ Go和NoGo条件的ERP叠加平均")
+        print("2. ✓ 条件对比图")
+        print("3. ✓ 差异波分析 (NoGo - Go)")
+        print("4. ✓ 典型电极的ERP波形")
+        print("5. ✓ 地形图（如果电极位置正确）")
+        print("6. ✓ ERP成分分析 (N200, P300)")
         print("\n下一步建议：")
-        print("1. 检查ICA成分，确保正确去除了眼电等伪迹")
-        print("2. 根据实验设计修改event_id")
-        print("3. 调整epoch的时间窗口和基线")
-        print("4. 进行进一步的统计分析")
+        print("1. 检查各个图形，确认数据质量")
+        print("2. 根据需要调整时间窗口和电极选择")
+        print("3. 进行统计分析（例如Go vs NoGo的差异检验）")
+        print("4. 导出数据进行进一步分析")
 
     except Exception as e:
         print(f"\n✗ 预处理过程中出现错误: {e}")
